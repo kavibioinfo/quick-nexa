@@ -1,19 +1,13 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  async rewrites() {
-    return [
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  images: {
+    remotePatterns: [
       {
-        source: '/',
-        has: [
-          {
-            type: 'header',
-            key: 'host',
-            value: 'onboard.ayushnexa.com',
-          },
-        ],
-        destination: '/onboard',
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
       },
-    ];
+    ],
   },
 };
 
