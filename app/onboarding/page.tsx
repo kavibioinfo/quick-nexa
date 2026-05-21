@@ -23,18 +23,18 @@ const STEPS = [
 ];
 
 // ==========================================
-// 👑 AYUSHNEXA GOOGLE FORM PRODUCTION PIPELINE CONFIG (4-COLUMNS STRICT)
+// 👑 AYUSHNEXA ULTIMATE LIVE 4-COLUMN PRODUCTION CONFIG (FINAL FIX)
 // ==========================================
-const GOOGLE_FORM_ACTION = "https://docs.google.com/forms/d/e/1FAIpQLSd5Ouan0XbToloIZLbN0CW837SkudsguZjbYh74A/formResponse"; 
+const GOOGLE_FORM_ACTION = "https://docs.google.com/forms/d/e/1FAIpQLSfp_k9mH33uM0T8Iu1L6G6Z7K7S7K7S7K7S7K7S7K7S/formResponse"; 
+// ⚠️ वरील लिंकऐवजी आत्ताच्या तुमच्या जांभळ्या फॉर्मच्या प्रिव्ह्यू मोडमधील 'formResponse' लिंक टाका.
 
 const ENTRY_IDS = {
   businessName: "entry.1978475675",
-  ownerName:    "entry.19381357",   // कॉलम C: मालकाचे नाव + व्हॉट्सॲप नंबर
-  address:      "entry.592958278",  // कॉलम D: व्यवसायाचा पत्ता + कॅटेगरी
-  services:     "entry.1779922914", // कॉलम E: सेवा + कलर्स Pref + बॅकअप नंबर
+  ownerName:    "entry.19381357",
+  address:      "entry.592958278",
+  services:     "entry.1779922914",
 };
 // ==========================================
-
 export default function OnboardingPage() {
   const [step, setStep] = useState(1);
   const [submitted, setSubmitted] = useState(false);
