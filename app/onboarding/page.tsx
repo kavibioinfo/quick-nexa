@@ -8,7 +8,6 @@ import {
   MapPin,
   Globe,
   Palette,
-  ImagePlus,
   CheckCircle2,
   ChevronRight,
   Zap,
@@ -24,16 +23,15 @@ const STEPS = [
 ];
 
 // ==========================================
-// 👑 AYUSHNEXA GOOGLE FORM PRODUCTION PIPELINE CONFIG (100% CORRECT)
+// 👑 AYUSHNEXA GOOGLE FORM PRODUCTION PIPELINE CONFIG (4-COLUMNS STRICT)
 // ==========================================
 const GOOGLE_FORM_ACTION = "https://docs.google.com/forms/d/e/1FAIpQLSd5Ouan0XbToloIZLbN0CW837SkudsguZjbYh74A/formResponse"; 
 
 const ENTRY_IDS = {
   businessName: "entry.1978475675",
-  ownerName:    "entry.19381357",   // मालकाचे नाव + व्हॉट्सॲप
-  address:      "entry.592958278",  // पत्ता + कॅटेगरी
-  services:     "entry.1779922914", // सेवा + कलर्स
-  instagram:    "entry.288760257",  // बॅकअप व्हॉट्सॲप नंबर
+  ownerName:    "entry.19381357",   // कॉलम C: मालकाचे नाव + व्हॉट्सॲप नंबर
+  address:      "entry.592958278",  // कॉलम D: व्यवसायाचा पत्ता + कॅटेगरी
+  services:     "entry.1779922914", // कॉलम E: सेवा + कलर्स Pref + बॅकअप नंबर
 };
 // ==========================================
 
@@ -49,7 +47,7 @@ export default function OnboardingPage() {
     whatsapp: "",
     address: "",
     services: "",
-    instagram: "",
+    instagram: "", // आपण यामध्ये Alternative WhatsApp नंबर सेव्ह करत आहोत
     colors: "",
     websiteType: "",
   });
@@ -57,39 +55,63 @@ export default function OnboardingPage() {
   const update = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
   const progress = ((step - 1) / (STEPS.length - 1)) * 100;
 
-  const handleDrop = (e) => {
+  const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDragActive(false);
     const dropped = Array.from(e.dataTransfer.files).map((f) => f.name);
     setFiles((prev) => [...prev, ...dropped]);
   };
 
-  const handleFileInput = (e) => {
-    const picked = Array.from(e.target.files).map((f) => f.name);
-    setFiles((prev) => [...prev, ...picked]);
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const picked = Array.from(e.target.files).map((f) => f.name);
+      setFiles((prev) => [...prev, ...picked]);
+    }
   };
 
-  // 🚀 SUBMIT DATA PIPELINE INTERFACES
-  const handleFormSubmit = async (e) => {
+  // 🚀 SMART WHATSAPP REDIRECT & LIVE GOOGLE SHEET CONNECTION PIPELINE
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
+    // 1. Pack data precisely for your 4 Google Sheet Columns
     const formData = new FormData();
     formData.append(ENTRY_IDS.businessName, form.businessName);
     formData.append(ENTRY_IDS.ownerName, `${form.ownerName} (WhatsApp: ${form.whatsapp})`);
     formData.append(ENTRY_IDS.address, `${form.address} [Category: ${form.websiteType || "General"}]`);
-    formData.append(ENTRY_IDS.services, `${form.services} [Colors Pref: ${form.colors || "Navy Blue"}]`);
-    formData.append(ENTRY_IDS.instagram, form.instagram ? `Alt WhatsApp: ${form.instagram}` : "Not Provided");
+    
+    const fallbackWA = form.instagram ? `Alt WA: ${form.instagram}` : "No Alt WA";
+    formData.append(ENTRY_IDS.services, `Services: ${form.services} | Colors: ${form.colors || "Navy Blue"} | ${fallbackWA}`);
 
     try {
+      // 2. Silently dispatch payload to Google Forms Action
       await fetch(GOOGLE_FORM_ACTION, {
         method: "POST",
         mode: "no-cors",
         body: formData,
       });
+
+      // 3. Craft a perfect executive message for YOUR official WhatsApp chat
+      const whatsappMessage = 
+        `🚀 *नवीन Onboarding Form — AyushNexa* 🚀\n\n` +
+        `🏢 *व्यवसायाचे नाव:* ${form.businessName}\n` +
+        `👤 *मालकाचे नाव:* ${form.ownerName}\n` +
+        `📞 *मुख्य व्हॉट्सॲप:* ${form.whatsapp}\n` +
+        `📍 *पत्ता & कॅटेगरी:* ${form.address} (${form.websiteType || "General"})\n` +
+        `⚙️ *सेवा / उत्पादने:* ${form.services}\n` +
+        `🎨 *कलर Preference:* ${form.colors || "Navy Blue"}\n` +
+        `📲 *बॅकअप व्हॉट्सॲप:* ${form.instagram || "Not Provided"}\n\n` +
+        `👉 *कृपया माझी प्रीमियम वेबसाईट लवकरात लवकर लाईव्ह करा!*`;
+
+      // 4. Secure direct deep-linking redirect sequence
+      const waUrl = `https://api.whatsapp.com/send?phone=919561042986&text=${encodeURIComponent(whatsappMessage)}`;
+      
+      // Redirect target to active messaging pipeline
+      window.location.href = waUrl;
+
       setSubmitted(true);
     } catch (error) {
-      console.error("Submission failed:", error);
+      console.error("Submission Pipeline Sync Failed:", error);
       alert("काहीतरी तांत्रिक त्रुटी आली आहे, कृपया पुन्हा प्रयत्न करा.");
     } finally {
       setLoading(false);
