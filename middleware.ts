@@ -2,21 +2,31 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
-  const url = request.nextUrl.clone();
   const hostname = request.headers.get('host') || '';
+  const { pathname } = request.nextUrl;
 
-  // 🎯 जर क्लायंटने onboard.ayushnexa.com उघडले तर त्याला थेट फॉर्मच्या पाथवर पाठवा
+  // 🎯 STRICT RULE: जर युझरने onboard.ayushnexa.com हे डोमेन उघडले असेल
   if (hostname.includes('onboard.ayushnexa.com')) {
-    if (url.pathname === '/') {
-      url.pathname = '/onboard';
-      return NextResponse.rewrite(url);
+    // जर तो होमपेजवर ('/') असेल, तर त्याला चोरून बॅकग्राउंडला /onboard वर पाठवा
+    if (pathname === '/') {
+      const onboardUrl = new URL('/onboard', request.url);
+      return NextResponse.rewrite(onboardUrl);
     }
   }
 
   return NextResponse.next();
 }
 
-// Ensure the middleware executes on all basic routes
+// Secure matching array matrix configuration
 export const config = {
-  matcher: ['/', '/onboard'],
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     */
+    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+  ],
 };
