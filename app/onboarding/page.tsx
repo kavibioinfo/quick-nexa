@@ -54,7 +54,7 @@ export default function OnboardingPage() {
     websiteType: "",
   });
 
-  const update = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const update = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
   const progress = ((step - 1) / (STEPS.length - 1)) * 100;
 
   const handleDrop = (e) => {
