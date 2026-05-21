@@ -73,6 +73,11 @@ function Wordmark({ onDark = false }: { onDark?: boolean }) {
 ───────────────────────────────────────── */
  
 export default function LandingPage() {
+  // 🎯 RUNTIME SUBDOMAIN CHECKER (FAIL-PROOF)
+  if (typeof window !== 'undefined' && window.location.hostname.includes('onboard.ayushnexa.com')) {
+    window.location.href = '/onboard';
+    return null;
+  }
   const [timeLeft, setTimeLeft] = React.useState(3600 * 2 + 54 * 60);
  
   React.useEffect(() => {
