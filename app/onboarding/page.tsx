@@ -1,19 +1,9 @@
 "use client";
  
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
-  Building2,
-  User,
-  Phone,
-  MapPin,
-  Globe,
-  Palette,
-  CheckCircle2,
-  ChevronRight,
-  Zap,
-  Send,
-  Upload,
-  Sparkles,
+  Building2, User, Phone, MapPin, Globe, Palette,
+  CheckCircle2, ChevronRight, Zap, Send, Upload, Sparkles, X, FileImage,
 } from "lucide-react";
  
 const STEPS = [
@@ -22,35 +12,29 @@ const STEPS = [
   { id: 3, label: "Branding", icon: Palette },
 ];
  
-// ==========================================
-// ✅ AYUSHNEXA — FIXED & FINAL CONFIG
-// ==========================================
-const GOOGLE_FORM_ACTION =
-  "https://docs.google.com/forms/d/e/1FAIpQLSfW1Xf_KYzPFAIeFFf7wP84rygF2TC_pDK7KS-y0NFmvSNRQA/formResponse";
- 
-const ENTRY_IDS = {
-  businessName: "entry.86426507",   // Column B: Business Name
-  ownerName:    "entry.385128650",  // Column C: Owner Name + WhatsApp
-  address:      "entry.1247093245", // Column D: Address + Category
-  services:     "entry.141297351",  // Column E: Services + Colors + Alt WA
-};
-// ==========================================
+// ✅ STEP 5: Paste your Apps Script Web App URL here after deploying
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby1YIl0chyZcV-fpaxfSVhr1IQ6kx7G1Y0Jw8WI8ghfEk1h7DyKIReLayFyJeR8Yo7hZA/exec";
  
 export default function OnboardingPage() {
   const [step, setStep] = useState(1);
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
-  const [files, setFiles] = useState<string[]>([]);
+  const [files, setFiles] = useState<File[]>([]);
+  const [uploadProgress, setUploadProgress] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+ 
   const [form, setForm] = useState({
     businessName: "",
     ownerName: "",
     whatsapp: "",
+    altWhatsapp: "",
     address: "",
     services: "",
-    instagram: "", // Alternative WhatsApp number
+    otherBusiness: "",
     colors: "",
     websiteType: "",
+    requirements: "",
   });
  
   const update = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
@@ -59,71 +43,99 @@ export default function OnboardingPage() {
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDragActive(false);
-    const dropped = Array.from(e.dataTransfer.files).map((f) => f.name);
-    setFiles((prev) => [...prev, ...dropped]);
+    const dropped = Array.from(e.dataTransfer.files);
+    setFiles((prev) => [...prev, ...dropped].slice(0, 5));
   };
  
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      const picked = Array.from(e.target.files).map((f) => f.name);
-      setFiles((prev) => [...prev, ...picked]);
+      const picked = Array.from(e.target.files);
+      setFiles((prev) => [...prev, ...picked].slice(0, 5));
     }
   };
  
-  // ✅ FIXED: No duplicate formData.append — each entry ID used exactly once
+  const removeFile = (index: number) => {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+ 
+  const toBase64 = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve((reader.result as string).split(",")[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+ 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
- 
-    const formData = new FormData();
- 
-    // Column B — Business Name
-    formData.append(ENTRY_IDS.businessName, form.businessName);
- 
-    // Column C — Owner Name + WhatsApp
-    formData.append(ENTRY_IDS.ownerName, `${form.ownerName} | WA: ${form.whatsapp}`);
- 
-    // Column D — Address + Category
-    formData.append(ENTRY_IDS.address, `${form.address} | Category: ${form.websiteType || "General"}`);
- 
-    // Column E — Services + Colors + Alt WA  ✅ ONLY ONCE (was duplicated before)
-    const altWA = form.instagram ? `Alt WA: ${form.instagram}` : "No Alt WA";
-    formData.append(
-      ENTRY_IDS.services,
-      `Services: ${form.services} | Colors: ${form.colors || "Navy Blue"} | ${altWA}`
-    );
+    setUploadProgress("Preparing your submission...");
  
     try {
-      // Send to Google Forms silently
-      await fetch(GOOGLE_FORM_ACTION, {
+      const fileData = await Promise.all(
+        files.map(async (file) => ({
+          name: file.name,
+          type: file.type,
+          data: await toBase64(file),
+        }))
+      );
+ 
+      setUploadProgress(files.length > 0 ? "Uploading files to Google Drive..." : "Submitting...");
+ 
+      const category =
+        form.websiteType === "Other" && form.otherBusiness
+          ? `Other: ${form.otherBusiness}`
+          : form.websiteType || "General";
+ 
+      const payload = {
+        businessName: form.businessName,
+        ownerName: form.ownerName,
+        whatsapp: form.whatsapp,
+        altWhatsapp: form.altWhatsapp,
+        address: form.address,
+        category: category,
+        services: form.services,
+        requirements: form.requirements,
+        colors: form.colors || "Navy Blue",
+        files: fileData,
+      };
+ 
+      const response = await fetch(APPS_SCRIPT_URL, {
         method: "POST",
-        mode: "no-cors",
-        body: formData,
+        headers: { "Content-Type": "text/plain" },
+        body: JSON.stringify(payload),
       });
  
-      // Build WhatsApp message
-      const whatsappMessage =
-        `🚀 *नवीन Onboarding Form — AyushNexa* 🚀\n\n` +
-        `🏢 *व्यवसायाचे नाव:* ${form.businessName}\n` +
-        `👤 *मालकाचे नाव:* ${form.ownerName}\n` +
-        `📞 *मुख्य व्हॉट्सॲप:* ${form.whatsapp}\n` +
-        `📍 *पत्ता & कॅटेगरी:* ${form.address} (${form.websiteType || "General"})\n` +
-        `⚙️ *सेवा / उत्पादने:* ${form.services}\n` +
-        `🎨 *कलर Preference:* ${form.colors || "Navy Blue"}\n` +
-        `📲 *बॅकअप व्हॉट्सॲप:* ${form.instagram || "Not Provided"}\n\n` +
-        `👉 *कृपया माझी प्रीमियम वेबसाईट लवकरात लवकर लाईव्ह करा!*`;
+      const result = await response.json();
+      if (result.status !== "success") throw new Error(result.message);
  
-      const waUrl = `https://api.whatsapp.com/send?phone=919561042986&text=${encodeURIComponent(whatsappMessage)}`;
+      setUploadProgress("Done! Opening WhatsApp...");
+ 
+      const driveInfo =
+        result.fileLinks?.length > 0
+          ? `\n📁 *Files:* ${result.fileLinks.join(" | ")}`
+          : "\n📁 *Files:* None uploaded";
+ 
+      const whatsappMessage =
+        `🚀 *नवीन Onboarding — AyushNexa* 🚀\n\n` +
+        `🏢 *Business:* ${form.businessName}\n` +
+        `👤 *Owner:* ${form.ownerName}\n` +
+        `📞 *WhatsApp:* ${form.whatsapp}\n` +
+        `📞 *Alt WA:* ${form.altWhatsapp || "N/A"}\n` +
+        `📍 *Address:* ${form.address}\n` +
+        `🏷️ *Category:* ${category}\n` +
+        `⚙️ *Services:* ${form.services}\n` +
+        `📝 *Requirements:* ${form.requirements || "Not provided"}\n` +
+        `🎨 *Colors:* ${form.colors || "Navy Blue"}` +
+        driveInfo +
+        `\n\n👉 *कृपया माझी प्रीमियम वेबसाईट लवकरात लवकर लाईव्ह करा!*`;
  
       setSubmitted(true);
- 
-      // Redirect after state update
       setTimeout(() => {
-        window.location.href = waUrl;
-      }, 100);
- 
+        window.location.href = `https://api.whatsapp.com/send?phone=919561042986&text=${encodeURIComponent(whatsappMessage)}`;
+      }, 500);
     } catch (error) {
-      console.error("Submission Failed:", error);
+      console.error("Submission error:", error);
       alert("काहीतरी तांत्रिक त्रुटी आली आहे, कृपया पुन्हा प्रयत्न करा.");
     } finally {
       setLoading(false);
@@ -160,12 +172,10 @@ export default function OnboardingPage() {
     <div className="min-h-screen bg-white" style={{ fontFamily: "'DM Sans', sans-serif" }}>
       <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Serif+Display&display=swap" rel="stylesheet" />
  
-      {/* TOP BAR */}
       <div className="text-white text-xs font-medium py-2.5 px-4 text-center" style={{ background: "linear-gradient(90deg, #1E3A8A, #1E40AF, #2563EB)" }}>
         🚀 फक्त <strong>₹३,९९९</strong> मध्ये Premium Business Website — Limited Offer! ⚡
       </div>
  
-      {/* NAVBAR */}
       <nav className="border-b border-gray-100 bg-white sticky top-0 z-40">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -181,7 +191,6 @@ export default function OnboardingPage() {
         </div>
       </nav>
  
-      {/* HEADER */}
       <div className="border-b border-gray-100" style={{ background: "linear-gradient(135deg, #EFF6FF 0%, #F0F9FF 50%, #F5F3FF 100%)" }}>
         <div className="max-w-5xl mx-auto px-4 py-12 text-center">
           <div className="inline-flex items-center gap-2 text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-100 px-4 py-2 rounded-full mb-6">
@@ -189,9 +198,7 @@ export default function OnboardingPage() {
           </div>
           <h1 className="text-4xl md:text-5xl font-black text-black leading-tight mb-4" style={{ fontFamily: "'DM Serif Display', serif", letterSpacing: "-0.02em" }}>
             Premium Website<br />
-            <span style={{ background: "linear-gradient(135deg, #1E40AF, #2563EB)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-              Onboarding Form
-            </span>
+            <span style={{ background: "linear-gradient(135deg, #1E40AF, #2563EB)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>Onboarding Form</span>
           </h1>
           <p className="text-gray-500 text-base max-w-xl mx-auto mb-6">नमस्कार 👋 आपल्या व्यवसायासाठी Premium Website तयार करण्यासाठी कृपया खालील माहिती भरा.</p>
           <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-gray-500">
@@ -202,7 +209,6 @@ export default function OnboardingPage() {
         </div>
       </div>
  
-      {/* STEPPER */}
       <div className="bg-white border-b border-gray-100 sticky top-[57px] z-30">
         <div className="max-w-5xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between max-w-md mx-auto relative">
@@ -227,7 +233,6 @@ export default function OnboardingPage() {
         </div>
       </div>
  
-      {/* FORM CONTENT */}
       <div className="max-w-2xl mx-auto px-4 py-10">
  
         {/* STEP 1 */}
@@ -251,12 +256,27 @@ export default function OnboardingPage() {
               <div className="grid grid-cols-2 gap-2.5">
                 {["Dental / Clinic", "Gym / Fitness", "Salon / Spa", "Coaching / Education", "Restaurant / Hotel", "Other"].map((type) => (
                   <button key={type} type="button" onClick={() => update("websiteType", type)}
-                    className="px-4 py-3 rounded-xl border text-sm font-medium text-left"
+                    className="px-4 py-3 rounded-xl border text-sm font-medium text-left transition-all"
                     style={{ background: form.websiteType === type ? "#EFF6FF" : "#FAFAFA", borderColor: form.websiteType === type ? "#1E40AF" : "#E5E7EB", color: form.websiteType === type ? "#1E40AF" : "#374151" }}>
                     {type}
                   </button>
                 ))}
               </div>
+              {/* ✅ Other — expandable description box */}
+              {form.websiteType === "Other" && (
+                <div className="mt-3">
+                  <div className="rounded-2xl border-2 border-blue-200 bg-blue-50 p-4">
+                    <label className="block text-xs font-semibold text-blue-700 mb-2">📝 Please describe your business type *</label>
+                    <textarea
+                      placeholder="e.g. I run a travel agency, photography studio, law firm, event management company..."
+                      value={form.otherBusiness}
+                      onChange={(e) => update("otherBusiness", e.target.value)}
+                      rows={3}
+                      className="w-full rounded-xl border border-blue-200 bg-white px-3 py-2.5 text-sm text-gray-800 outline-none resize-none focus:border-blue-400 transition-all"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -269,11 +289,22 @@ export default function OnboardingPage() {
               <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">
                 <Globe size={13} className="inline mr-1" />Your Services / Products *
               </label>
-              <textarea required placeholder="Describe what you offer..." value={form.services} onChange={(e) => update("services", e.target.value)} rows={5}
-                className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3.5 text-sm text-gray-800 outline-none resize-none" />
+              <textarea required placeholder="List your main services or products..." value={form.services} onChange={(e) => update("services", e.target.value)} rows={4}
+                className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3.5 text-sm text-gray-800 outline-none resize-none focus:border-blue-300 focus:bg-white transition-all" />
+            </div>
+            {/* ✅ Requirements paragraph */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">📋 Website Requirements (Optional)</label>
+              <textarea
+                placeholder="Describe what you want on your website — e.g. I need a booking form, gallery, WhatsApp button, testimonials, pricing page..."
+                value={form.requirements}
+                onChange={(e) => update("requirements", e.target.value)}
+                rows={4}
+                className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3.5 text-sm text-gray-800 outline-none resize-none focus:border-blue-300 focus:bg-white transition-all"
+              />
             </div>
             <FormField icon={<Phone size={17} />} label="Alternative WhatsApp Number">
-              <input type="tel" placeholder="Backup number (Optional)" value={form.instagram} onChange={(e) => update("instagram", e.target.value)} className="w-full outline-none text-sm text-gray-800 bg-transparent" />
+              <input type="tel" placeholder="Backup number (Optional)" value={form.altWhatsapp} onChange={(e) => update("altWhatsapp", e.target.value)} className="w-full outline-none text-sm text-gray-800 bg-transparent" />
             </FormField>
             <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4 flex gap-3">
               <Zap size={18} className="text-blue-600 mt-0.5" />
@@ -288,37 +319,56 @@ export default function OnboardingPage() {
         {/* STEP 3 */}
         {step === 3 && (
           <div className="space-y-5">
-            <h2 className="text-2xl font-black text-black" style={{ fontFamily: "'DM Serif Display', serif" }}>Branding & Colors</h2>
-            <label htmlFor="file-upload"
-              className={`flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed p-10 cursor-pointer ${dragActive ? "border-blue-400 bg-blue-50" : "border-gray-200 bg-gray-50"}`}
-              onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
-              onDragLeave={() => setDragActive(false)}
-              onDrop={handleDrop}>
-              <Upload size={22} className="text-blue-600" />
-              <p className="font-semibold text-sm">Click to upload files or logo</p>
-              <input id="file-upload" type="file" multiple accept="image/*" className="hidden" onChange={handleFileInput} />
-            </label>
-            {files.length > 0 && (
-              <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded-lg">{files.join(", ")}</div>
-            )}
+            <h2 className="text-2xl font-black text-black" style={{ fontFamily: "'DM Serif Display', serif" }}>Branding & Files</h2>
             <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase mb-2.5">
-                <Palette size={13} className="inline mr-1" />Preferred Colors
-              </label>
+              <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">Upload Logo / Brand Files (Max 5)</label>
+              <div
+                className={`flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed p-8 cursor-pointer transition-all ${dragActive ? "border-blue-400 bg-blue-50" : "border-gray-200 bg-gray-50 hover:border-blue-300 hover:bg-blue-50/50"}`}
+                onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
+                onDragLeave={() => setDragActive(false)}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}>
+                <Upload size={24} className="text-blue-500" />
+                <div className="text-center">
+                  <p className="font-semibold text-sm text-gray-700">Click or drag files here</p>
+                  <p className="text-xs text-gray-400 mt-1">PNG, JPG, PDF, SVG — max 5 files</p>
+                </div>
+                <input ref={fileInputRef} type="file" multiple accept="image/*,.pdf,.svg" className="hidden" onChange={handleFileInput} />
+              </div>
+              {files.length > 0 && (
+                <div className="mt-3 space-y-2">
+                  {files.map((file, i) => (
+                    <div key={i} className="flex items-center gap-3 bg-gray-50 rounded-xl px-3 py-2.5 border border-gray-100">
+                      <FileImage size={16} className="text-blue-500 flex-shrink-0" />
+                      <span className="text-xs text-gray-700 flex-1 truncate">{file.name}</span>
+                      <span className="text-xs text-gray-400">{(file.size / 1024).toFixed(0)}KB</span>
+                      <button type="button" onClick={() => removeFile(i)} className="text-gray-400 hover:text-red-500 transition-colors ml-1">
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 uppercase mb-2.5"><Palette size={13} className="inline mr-1" />Preferred Colors</label>
               <div className="grid grid-cols-3 gap-2.5">
                 {[
                   { label: "Navy Blue", colors: ["#1E3A8A", "#3B82F6"] },
                   { label: "Black & Gold", colors: ["#111827", "#D97706"] },
                   { label: "Forest Green", colors: ["#14532D", "#22C55E"] },
+                  { label: "Rose & White", colors: ["#BE185D", "#FDF2F8"] },
+                  { label: "Orange & Dark", colors: ["#EA580C", "#1C1917"] },
+                  { label: "Purple & Soft", colors: ["#7C3AED", "#EDE9FE"] },
                 ].map((c) => (
                   <button key={c.label} type="button" onClick={() => update("colors", c.label)}
-                    className="rounded-xl border-2 overflow-hidden"
+                    className="rounded-xl border-2 overflow-hidden transition-all"
                     style={{ borderColor: form.colors === c.label ? "#1E40AF" : "transparent" }}>
                     <div className="h-8 flex">
                       <div className="flex-1" style={{ background: c.colors[0] }} />
                       <div className="flex-1" style={{ background: c.colors[1] }} />
                     </div>
-                    <p className="text-[10px] py-1 text-center bg-white">{c.label}</p>
+                    <p className="text-[10px] py-1 text-center bg-white font-medium">{c.label}</p>
                   </button>
                 ))}
               </div>
@@ -326,48 +376,44 @@ export default function OnboardingPage() {
           </div>
         )}
  
-        {/* NAVIGATION CONTROLS */}
+        {/* CONTROLS */}
         <div className="flex items-center justify-between mt-10 pt-6 border-t border-gray-100">
           {step > 1 ? (
             <button type="button" onClick={() => setStep((s) => s - 1)}
-              className="px-5 py-2.5 border rounded-xl text-sm font-semibold text-gray-600">← Back</button>
+              className="px-5 py-2.5 border rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-all">← Back</button>
           ) : <div />}
- 
           {step < STEPS.length ? (
             <button type="button" onClick={() => setStep((s) => s + 1)}
-              className="flex items-center gap-2 px-7 py-3 text-white text-sm font-bold rounded-xl shadow-lg"
+              className="flex items-center gap-2 px-7 py-3 text-white text-sm font-bold rounded-xl shadow-lg hover:opacity-90 transition-all"
               style={{ background: "linear-gradient(135deg, #1E40AF, #3B82F6)" }}>
               Continue <ChevronRight size={16} />
             </button>
           ) : (
             <button type="button" disabled={loading} onClick={handleFormSubmit}
-              className="flex items-center gap-2 px-7 py-3 text-white text-sm font-bold rounded-xl shadow-lg disabled:opacity-50"
+              className="flex items-center gap-2 px-7 py-3 text-white text-sm font-bold rounded-xl shadow-lg disabled:opacity-60 transition-all"
               style={{ background: "linear-gradient(135deg, #1E40AF, #3B82F6)" }}>
-              <Send size={15} />{loading ? "Submitting..." : "Submit Information"}
+              <Send size={15} />{loading ? (uploadProgress || "Submitting...") : "Submit Information"}
             </button>
           )}
         </div>
+        {loading && uploadProgress && (
+          <p className="mt-4 text-center text-xs text-blue-600 font-medium animate-pulse">{uploadProgress}</p>
+        )}
       </div>
     </div>
   );
 }
  
 function FormField({ icon, label, required, children }: {
-  icon: React.ReactNode;
-  label: string;
-  required?: boolean;
-  children: React.ReactNode;
+  icon: React.ReactNode; label: string; required?: boolean; children: React.ReactNode;
 }) {
   return (
     <div>
       <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">
-        <span className="inline-flex items-center gap-1">
-          {icon} {label} {required && <span className="text-blue-600">*</span>}
-        </span>
+        <span className="inline-flex items-center gap-1">{icon} {label} {required && <span className="text-blue-600">*</span>}</span>
       </label>
-      <div className="flex items-center gap-3 rounded-xl border bg-gray-50 px-4 py-3.5 focus-within:bg-white transition-all">
-        <span className="text-blue-500">{icon}</span>
-        {children}
+      <div className="flex items-center gap-3 rounded-xl border bg-gray-50 px-4 py-3.5 focus-within:bg-white focus-within:border-blue-300 transition-all">
+        <span className="text-blue-500 flex-shrink-0">{icon}</span>{children}
       </div>
     </div>
   );
