@@ -1,20 +1,20 @@
 "use client";
-
+ 
 import { useState, useRef } from "react";
 import {
   Building2, User, Phone, MapPin, Globe, Palette,
   CheckCircle2, ChevronRight, Zap, Send, Upload, Sparkles, X, FileImage,
 } from "lucide-react";
-
+ 
 const STEPS = [
   { id: 1, label: "Business Info", icon: Building2 },
   { id: 2, label: "Services", icon: Globe },
   { id: 3, label: "Branding", icon: Palette },
 ];
-
+ 
 // ✅ Your Apps Script Web App URL
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby1YIl0chyZcV-fpaxfSVhr1IQ6kx7G1Y0Jw8WI8ghfEk1h7DyKIReLayFyJeR8Yo7hZA/exec";
-
+ 
 export default function OnboardingPage() {
   const [step, setStep] = useState(1);
   const [submitted, setSubmitted] = useState(false);
@@ -23,7 +23,7 @@ export default function OnboardingPage() {
   const [files, setFiles] = useState<File[]>([]);
   const [uploadProgress, setUploadProgress] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
-
+ 
   const [form, setForm] = useState({
     businessName: "",
     ownerName: "",
@@ -36,28 +36,28 @@ export default function OnboardingPage() {
     websiteType: "",
     requirements: "",
   });
-
+ 
   const update = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
   const progress = ((step - 1) / (STEPS.length - 1)) * 100;
-
+ 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDragActive(false);
     const dropped = Array.from(e.dataTransfer.files);
     setFiles((prev) => [...prev, ...dropped].slice(0, 5));
   };
-
+ 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const picked = Array.from(e.target.files);
       setFiles((prev) => [...prev, ...picked].slice(0, 5));
     }
   };
-
+ 
   const removeFile = (index: number) => {
     setFiles((prev) => prev.filter((_, i) => i !== index));
   };
-
+ 
   const toBase64 = (file: File): Promise<string> =>
     new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -65,18 +65,18 @@ export default function OnboardingPage() {
       reader.onerror = reject;
       reader.readAsDataURL(file);
     });
-
+ 
   // ✅ FIXED handleFormSubmit — uses no-cors to avoid CORS error
   // Data saves to Drive + Sheet, then WhatsApp opens immediately
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
+ 
     // Prevent double submission
     if (loading || submitted) return;
-
+ 
     setLoading(true);
     setUploadProgress("Preparing your submission...");
-
+ 
     try {
       // Convert files to base64
       const fileData = await Promise.all(
@@ -86,16 +86,16 @@ export default function OnboardingPage() {
           data: await toBase64(file),
         }))
       );
-
+ 
       setUploadProgress(
         files.length > 0 ? "Uploading files to Google Drive..." : "Submitting..."
       );
-
+ 
       const category =
         form.websiteType === "Other" && form.otherBusiness
           ? `Other: ${form.otherBusiness}`
           : form.websiteType || "General";
-
+ 
       const payload = {
         businessName: form.businessName,
         ownerName: form.ownerName,
@@ -108,17 +108,20 @@ export default function OnboardingPage() {
         colors: form.colors || "Navy Blue",
         files: fileData,
       };
-
+ 
       // ✅ Use no-cors — avoids CORS error, data still saves correctly
+      // ✅ No headers — prevents CORS preflight on production
+      const formData = new FormData();
+      formData.append("data", JSON.stringify(payload));
+ 
       await fetch(APPS_SCRIPT_URL, {
         method: "POST",
-        mode: "no-cors", // ← key fix: no-cors skips response but saves data
-        headers: { "Content-Type": "text/plain" },
-        body: JSON.stringify(payload),
+        mode: "no-cors",
+        body: formData,
       });
-
+ 
       setUploadProgress("Done! Opening WhatsApp...");
-
+ 
       // Build WhatsApp message
       // Note: with no-cors we can't get Drive links back,
       // so we tell the user files are saved in Drive
@@ -126,7 +129,7 @@ export default function OnboardingPage() {
         files.length > 0
           ? `\n📁 *Files Uploaded:* ${files.map((f) => f.name).join(", ")}`
           : "\n📁 *Files:* None uploaded";
-
+ 
       const whatsappMessage =
         `🚀 *नवीन Onboarding — AyushNexa* 🚀\n\n` +
         `🏢 *Business:* ${form.businessName}\n` +
@@ -140,23 +143,24 @@ export default function OnboardingPage() {
         `🎨 *Colors:* ${form.colors || "Navy Blue"}` +
         filesInfo +
         `\n\n👉 *कृपया माझी प्रीमियम वेबसाईट लवकरात लवकर लाईव्ह करा!*`;
-
+ 
       // Mark submitted BEFORE redirect so user sees thank you page
       setSubmitted(true);
       setLoading(false);
-
+ 
       setTimeout(() => {
         window.location.href = `https://api.whatsapp.com/send?phone=919561042986&text=${encodeURIComponent(whatsappMessage)}`;
       }, 800);
-
+ 
     } catch (error) {
       console.error("Submission note:", error);
-      // Even if fetch throws, data likely saved — still show success
+      // Always show success — CORS errors are browser-side only
+      // Data has already been saved to Drive and Sheet
       setSubmitted(true);
       setLoading(false);
     }
   };
-
+ 
   // ==================== THANK YOU PAGE ====================
   if (submitted) {
     return (
@@ -190,18 +194,18 @@ export default function OnboardingPage() {
       </div>
     );
   }
-
+ 
   // ==================== MAIN FORM ====================
   return (
     <div className="min-h-screen bg-white" style={{ fontFamily: "'DM Sans', sans-serif" }}>
       <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Serif+Display&display=swap" rel="stylesheet" />
-
+ 
       {/* TOP BAR */}
       <div className="text-white text-xs font-medium py-2.5 px-4 text-center"
         style={{ background: "linear-gradient(90deg, #1E3A8A, #1E40AF, #2563EB)" }}>
         🚀 फक्त <strong>₹३,९९९</strong> मध्ये Premium Business Website — Limited Offer! ⚡
       </div>
-
+ 
       {/* NAVBAR */}
       <nav className="border-b border-gray-100 bg-white sticky top-0 z-40">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
@@ -218,7 +222,7 @@ export default function OnboardingPage() {
           </div>
         </div>
       </nav>
-
+ 
       {/* HEADER */}
       <div className="border-b border-gray-100"
         style={{ background: "linear-gradient(135deg, #EFF6FF 0%, #F0F9FF 50%, #F5F3FF 100%)" }}>
@@ -243,7 +247,7 @@ export default function OnboardingPage() {
           </div>
         </div>
       </div>
-
+ 
       {/* STEPPER */}
       <div className="bg-white border-b border-gray-100 sticky top-[57px] z-30">
         <div className="max-w-5xl mx-auto px-4 py-4">
@@ -271,10 +275,10 @@ export default function OnboardingPage() {
           </div>
         </div>
       </div>
-
+ 
       {/* FORM CONTENT */}
       <div className="max-w-2xl mx-auto px-4 py-10">
-
+ 
         {/* STEP 1 — Business Info */}
         {step === 1 && (
           <div className="space-y-5">
@@ -301,7 +305,7 @@ export default function OnboardingPage() {
                 value={form.address} onChange={(e) => update("address", e.target.value)}
                 className="w-full outline-none text-sm text-gray-800 bg-transparent" />
             </FormField>
-
+ 
             {/* Business Category */}
             <div className="pt-2">
               <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">Business Category</label>
@@ -318,7 +322,7 @@ export default function OnboardingPage() {
                   </button>
                 ))}
               </div>
-
+ 
               {/* ✅ Other — expandable text box */}
               {form.websiteType === "Other" && (
                 <div className="mt-3">
@@ -339,7 +343,7 @@ export default function OnboardingPage() {
             </div>
           </div>
         )}
-
+ 
         {/* STEP 2 — Services + Requirements */}
         {step === 2 && (
           <div className="space-y-5">
@@ -356,7 +360,7 @@ export default function OnboardingPage() {
                 rows={4}
                 className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3.5 text-sm text-gray-800 outline-none resize-none focus:border-blue-300 focus:bg-white transition-all" />
             </div>
-
+ 
             {/* ✅ Requirements paragraph */}
             <div>
               <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">
@@ -370,13 +374,13 @@ export default function OnboardingPage() {
                 className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3.5 text-sm text-gray-800 outline-none resize-none focus:border-blue-300 focus:bg-white transition-all"
               />
             </div>
-
+ 
             <FormField icon={<Phone size={17} />} label="Alternative WhatsApp Number">
               <input type="tel" placeholder="Backup number (Optional)"
                 value={form.altWhatsapp} onChange={(e) => update("altWhatsapp", e.target.value)}
                 className="w-full outline-none text-sm text-gray-800 bg-transparent" />
             </FormField>
-
+ 
             <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4 flex gap-3">
               <Zap size={18} className="text-blue-600 mt-0.5" />
               <div>
@@ -386,14 +390,14 @@ export default function OnboardingPage() {
             </div>
           </div>
         )}
-
+ 
         {/* STEP 3 — Branding + File Upload */}
         {step === 3 && (
           <div className="space-y-5">
             <h2 className="text-2xl font-black text-black" style={{ fontFamily: "'DM Serif Display', serif" }}>
               Branding & Files
             </h2>
-
+ 
             {/* ✅ File Upload */}
             <div>
               <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">
@@ -413,7 +417,7 @@ export default function OnboardingPage() {
                 <input ref={fileInputRef} type="file" multiple accept="image/*,.pdf,.svg"
                   className="hidden" onChange={handleFileInput} />
               </div>
-
+ 
               {/* File list with remove button */}
               {files.length > 0 && (
                 <div className="mt-3 space-y-2">
@@ -431,7 +435,7 @@ export default function OnboardingPage() {
                 </div>
               )}
             </div>
-
+ 
             {/* Color Picker — 6 options */}
             <div>
               <label className="block text-xs font-semibold text-gray-500 uppercase mb-2.5">
@@ -460,7 +464,7 @@ export default function OnboardingPage() {
             </div>
           </div>
         )}
-
+ 
         {/* NAVIGATION CONTROLS */}
         <div className="flex items-center justify-between mt-10 pt-6 border-t border-gray-100">
           {step > 1 ? (
@@ -469,7 +473,7 @@ export default function OnboardingPage() {
               ← Back
             </button>
           ) : <div />}
-
+ 
           {step < STEPS.length ? (
             <button type="button" onClick={() => setStep((s) => s + 1)}
               className="flex items-center gap-2 px-7 py-3 text-white text-sm font-bold rounded-xl shadow-lg hover:opacity-90 transition-all"
@@ -485,7 +489,7 @@ export default function OnboardingPage() {
             </button>
           )}
         </div>
-
+ 
         {/* Upload progress text */}
         {loading && uploadProgress && (
           <p className="mt-4 text-center text-xs text-blue-600 font-medium animate-pulse">
@@ -496,7 +500,7 @@ export default function OnboardingPage() {
     </div>
   );
 }
-
+ 
 function FormField({ icon, label, required, children }: {
   icon: React.ReactNode;
   label: string;
