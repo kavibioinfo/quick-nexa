@@ -8,10 +8,10 @@ export default function OnboardingPage() {
         🚀 <strong>AYUSHNEXA DIGITAL SOLUTIONS</strong> — Premium Client Onboarding Pipeline ⚡
       </div>
 
-      {/* थेट अधिकृत गुगल फॉर्म प्रिमियम आयफ्रेममध्ये लोड करणे */}
+      {/* तुमचा अधिकृत मुख्य गुगल फॉर्म प्रिमियम आयफ्रेममध्ये लोड करणे */}
       <div className="flex-1 w-full h-[calc(100vh-40px)] overflow-hidden bg-white">
         <iframe
-          src="https://docs.google.com/forms/d/1MCOxd5Ouan0XbToIoIZLbN0CW837SkudsguZjbYh74A/viewform?embedded=true"
+          src="https://docs.google.com/forms/d/e/1FAIpQLSd5Ouan0XbToloIZLbN0CW837SkudsguZjbYh74A/viewform?embedded=true"
           className="w-full h-full border-none"
           title="AyushNexa Onboarding Form"
         >
