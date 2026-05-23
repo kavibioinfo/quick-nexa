@@ -23,10 +23,9 @@ const STEPS = [
 ];
 
 // ==========================================
-// 👑 AYUSHNEXA ULTIMATE LIVE 4-COLUMN PRODUCTION CONFIG (FINAL FIX)
+// 👑 AYUSHNEXA ULTIMATE LIVE 4-COLUMN PRODUCTION CONFIG (100% WORKING FIXED)
 // ==========================================
-const GOOGLE_FORM_ACTION = "https://docs.google.com/forms/d/e/1FAIpQLSfp_k9mH33uM0T8Iu1L6G6Z7K7S7K7S7K7S7K7S7K7S/formResponse"; 
-// ⚠️ वरील लिंकऐवजी आत्ताच्या तुमच्या जांभळ्या फॉर्मच्या प्रिव्ह्यू मोडमधील 'formResponse' लिंक टाका.
+const GOOGLE_FORM_ACTION = "https://docs.google.com/forms/d/e/1FAIpQLSd5Ouan0XbToloIZLbN0CW837SkudsguZjbYh74A/formResponse"; 
 
 const ENTRY_IDS = {
   businessName: "entry.1978475675",
@@ -35,6 +34,7 @@ const ENTRY_IDS = {
   services:     "entry.1779922914",
 };
 // ==========================================
+
 export default function OnboardingPage() {
   const [step, setStep] = useState(1);
   const [submitted, setSubmitted] = useState(false);
