@@ -34,7 +34,7 @@ export const metadata: Metadata = {
     canonical: "https://quick.ayushnexa.com",
   },
   verification: {
-    google: "pBApiHbD5LPiOIjra_a_Bkr64NXAPvVE956G6fB48qA",  // ← replace this
+    google: "pBApiHbD5LPiOIjra_a_Bkr64NXAPvVE956G6fB48qA", 
   },
   openGraph: {
     title: "Quick AyushNexa — AI Hospital Management System",
